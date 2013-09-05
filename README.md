@@ -2,12 +2,14 @@ smoq
 ====
 
 `smoq` stands for "Simple MongoDB Query interface".
+You can pronounce it like "smock", "smoke", or "smirk", depending on your mood.
 
 This module translates from a simple human-readable syntax
 into a MongoDB query. Currently it does no execution of
-the query -- use something like pymongo for that.
+the query -- use something like pymongo for that (as shown below).
 
-For sample usage, etc., see the 'docs' directory.
+For sample usage, etc., see the docs.
+
 But here's a teaser, showing how you might use it with
 pymongo:
 
