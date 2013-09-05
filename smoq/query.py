@@ -33,43 +33,50 @@ def to_mongo(qry):
     """Transform a simple query with one or more filter expressions
     into a MongoDB query expression.
 
-    :param qry: Filter expression(s). Filter expressions are all
-                of the form: field operator value.
+    Filter expressions are all of the form `field operator value`.
 
-                - `field` is the name of a field in the
-                - `value` is the value to compare against:
-                    * numeric
-                    * string, you MUST use 'single' or "double" quotes
-                    * boolean: true, false
-                - `operator` is a comparison operator:
-                    * inequalities: >, <, =, <=, >=, !=
-                    * data type: int, float, string, or bool
-                    * exists: boolean (true/false) whether field exists in record
-                    * size: for array fields, an inequality for the array size, given as
-                      a suffix to the operator: size>, size<
+        - `field` is the name of a field in a MongoDB document
+        - `value` is the value to compare against:
+            * numeric
+            * string, you MUST use 'single' or "double" quotes
+            * boolean: true, false
+        - `operator` is a comparison operator:
+            * inequalities: >, <, =, <=, >=, !=
+            * data type: int, float, string, or bool
+            * exists: boolean (true/false) whether field exists in record
+            * size: for array fields, an inequality for the array size, given as
+              a suffix to the operator: size>, size<
 
-                There are two basic forms accepted for the query, either
-                a string with "and" joining expressions and "or" joining
-                groups of expressions, or a list version of this same thing, where
-                the inner list is the "and"ed expressions and an optional outer
-                list "or"s them together.
+    There are two basic forms accepted for the query, either
+    a string with "and" joining expressions and "or" joining
+    groups of expressions, or a list version of this same thing, where
+    the inner list is the "and"ed expressions and an optional outer
+    list "or"s them together.
 
-                In the string form, parentheses before or after the "or"ed expression
-                groups [note: even non-sensical ones like '((('], are ignored.
-                So these can be used to clarify the groupings.
-    :type qry: str, list
+    In the string form, parentheses before or after the "or"ed expression
+    groups [note: even non-sensical ones like '((('], are ignored.
+    So these can be used to clarify the groupings.
+
+    :param qry: Filter expression(s), see function docstring for details.
+    :type qry: str or list
     :return: MongoDB query
     :rtype: dict
     :raises: BadExpression, if one of the input expressions cannot be parsed
 
-    Examples::
+    **Examples**
+
+    Two sets of filters, return records where either is true:
 
     >>> to_mongo('(a > 3 and b = "hello") or (c > 1 and d = "goodbye")')
     {'$or': [{'a': {'$gt': 3}, 'b': 'hello'}, {'c': {'$gt': 1}, 'd': 'goodbye'}]}
-    >>> # same, without parentheses
+
+    Same as previous, but without parentheses:
+
     >>> to_mongo('a > 3 and b = "hello" or c > 1 and d = "goodbye"')
     {'$or': [{'a': {'$gt': 3}, 'b': 'hello'}, {'c': {'$gt': 1}, 'd': 'goodbye'}]}
-    >>> # same, using list syntax
+
+    Same as previous, but using lists rather than "and"/"or":
+
     >>> to_mongo([['a > 3', 'b = "hello"'], ['c > 1', 'd = "goodbye"']])
     {'$or': [{'a': {'$gt': 3}, 'b': 'hello'}, {'c': {'$gt': 1}, 'd': 'goodbye'}]}
     """
