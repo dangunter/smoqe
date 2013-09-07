@@ -2,14 +2,15 @@ import ez_setup
 ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(
-    name="Smoq",
+    name="Smoqe",
     version="0.1",
     packages=find_packages(),
-    entry_point={
-        'console_scripts': [
-             'smoqi = smoq.query:main'
-        ]
-    },
+# TBD:
+#    entry_point={
+#        'console_scripts': [
+#             'smoqer = smoq.query:main'
+#        ]
+#    },
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine
     install_requires =['docutils>=0.3'],
