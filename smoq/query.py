@@ -10,10 +10,11 @@ __email__ = "dkgunter@lbl.gov"
 __status__ = "Development"
 __date__ = "8/30/13"
 
+## Imports
+# Standard library
 import copy
 from numbers import Number
 import re
-
 
 class BadExpression(Exception):
     """Raised by `query()` if the input is not understood.
