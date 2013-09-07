@@ -19,7 +19,7 @@ coll.find("beverage = 'beer' and IBU > 20")
 __author__ = 'Dan Gunter <dkgunter@lbl.gov>'
 __date__ = '9/6/13'
 
-from .query import to_mongo
+from .query import to_mongo, BadExpression
 
 have_pymongo = False
 try:
@@ -36,42 +36,50 @@ if have_pymongo:
 
     spec_pos = 1   # which arg
 
-    def smoq_spec(fn):
+    def smoq_spec(or_id):
         """Run to_mongo() on string or list 'spec' arguments.
         """
-        def wrapped_fn(*args, **kwargs):
-            # find spec
-            spec, in_args = None, False
-            if len(args) > spec_pos:    # 0-th is 'self'
-                spec = args[spec_pos]
-                in_args = True
-            elif 'spec' in kwargs:
-                spec = kwargs['spec']
-            if spec is not None and (
-                    isinstance(spec, str) or isinstance(spec, list)):
-                spec = to_mongo(spec)
-                if in_args:
-                    args = list(args)
-                    args[spec_pos] = spec
-                else:
-                    kwargs['spec'] = spec
-            return fn(*args, **kwargs)
-        return wrapped_fn
+        def wrap(fn):
+            def wrapped_fn(*args, **kwargs):
+                # find spec
+                spec, in_args = None, False
+                if len(args) > spec_pos:    # 0-th is 'self'
+                    spec = args[spec_pos]
+                    in_args = True
+                elif 'spec' in kwargs:
+                    spec = kwargs['spec']
+                if spec is not None and (
+                        isinstance(spec, str) or isinstance(spec, list)):
+                    try:
+                        spec = to_mongo(spec)
+                        if in_args:
+                            args = list(args)
+                            args[spec_pos] = spec
+                        else:
+                            kwargs['spec'] = spec
+                    except BadExpression as err:
+                        if or_id:
+                            pass   # treat as id, so ignore err
+                        else:
+                            raise pymongo.errors.InvalidOperation(str(err))
+                return fn(*args, **kwargs)
+            return wrapped_fn
+        return wrap
 
     class Collection(_Collection):
-        @smoq_spec
+        @smoq_spec(False)
         def find(self, *args, **kwargs):
             return _Collection.find(self, *args, **kwargs)
 
-        @smoq_spec
+        @smoq_spec(True)
         def find_one(self, *args, **kwargs):
             return _Collection.find(self, *args, **kwargs)
 
-        @smoq_spec
+        @smoq_spec(False)
         def remove(self, *args, **kwargs):
             return _Collection.remove(self, *args, **kwargs)
 
-        @smoq_spec
+        @smoq_spec(True)
         def update(self, *args, **kwargs):
             return _Collection.update(self, *args, **kwargs)
 
