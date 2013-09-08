@@ -1,6 +1,6 @@
 
-smoq: Simple MongoDB Query interface
-======================================
+smoqe: Simplified MongoDB Query Expressions
+============================================
 
 Contents:
 
