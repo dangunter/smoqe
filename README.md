@@ -17,7 +17,7 @@ But here's a teaser, showing how you might use it, standalone..
 
 ..or with pymongo:
 
-    # use the smoqe replacement for MongoClient
+    # use the smoqe replacement for pymongo.MongoClient
     from smoqe import MongoClient
     # treat just like MongoClient instances
     client = MongoClient()
