@@ -5,9 +5,14 @@ __author__ = "Dan Gunter"
 __copyright__ = "Copyright 2013, LBNL"
 __email__ = "dkgunter@lbl.gov"
 
+import logging
 import unittest
+import time
+
 import smoqe
 
+logging.basicConfig()
+logging.root.setLevel(logging.INFO)
 
 class TestCase(unittest.TestCase):
 
@@ -50,6 +55,23 @@ class TestCase(unittest.TestCase):
     def test_q4(self):
         "Simple good ones"
         map(self._q_ok, ["a = 1", "dude_where_is = 'my car'"])
+
+    def test_perf(self):
+        "Perf test"
+        # implemented for easy cmdline import
+        rate = perf_test()
+        self.assert_(rate > 10000, "too darn slow")
+
+def perf_test(n=100, m=25):
+    # doesn't matter what the expression is
+    expr = 'a >= 12 and bee size 10 and cee exists true and eff ~ "^foo|bar.*"'
+    qry = [expr] * m
+    qry = [qry] * n
+    t0 = time.time()
+    _ = smoqe.to_mongo(qry)
+    dt = time.time() - t0
+    logging.info("Time for {:d} expressions = {:f} seconds ({:.1f} expr/s)".format(n * m, dt, n * m / dt))
+    return n * m / dt
 
 if __name__ == '__main__':
     unittest.main()
