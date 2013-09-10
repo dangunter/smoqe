@@ -29,7 +29,14 @@ def to_mongo(qry):
     """Transform a simple query with one or more filter expressions
     into a MongoDB query expression.
 
-    Filter expressions are all of the form `field operator value`.
+    :param qry: Filter expression(s), see function docstring for details.
+    :type qry: str or list
+    :return: MongoDB query
+    :rtype: dict
+    :raises: BadExpression, if one of the input expressions cannot be parsed
+
+    Expressions have three parts, called in order ``field``, ``operator``,
+    and ``value``.
 
         - `field` is the name of a field in a MongoDB document
         - `value` is the value to compare against:
@@ -38,27 +45,28 @@ def to_mongo(qry):
             * boolean: true, false
         - `operator` is a comparison operator:
             * inequalities: >, <, =, <=, >=, !=
-            * regular expression: ~
+            * PCRE regular expression: ~
             * data type: int, float, string, or bool
             * exists: boolean (true/false) whether field exists in record
             * size: for array fields, an inequality for the array size, given as
               a suffix to the operator: size>, size<
 
-    There are two basic forms accepted for the query, either
-    a string with "and" joining expressions and "or" joining
-    groups of expressions, or a list version of this same thing, where
-    the inner list is the "and"ed expressions and an optional outer
-    list "or"s them together.
+    Multiple expressions can be a single string, or a list.
+    In either case, the form is a "disjunction of conjunctions".
+
+    In the string form:
+
+        * "and" joins expressions into groups
+        * "or" joins one or more expression groups
+
+    In the list form:
+
+        * The inner list is a group of "and"ed expressions
+        * The outer list "or"s the expression groups together.
 
     In the string form, parentheses before or after the "or"ed expression
     groups [note: even non-sensical ones like '((('], are ignored.
     So these can be used to clarify the groupings.
-
-    :param qry: Filter expression(s), see function docstring for details.
-    :type qry: str or list
-    :return: MongoDB query
-    :rtype: dict
-    :raises: BadExpression, if one of the input expressions cannot be parsed
 
     **Examples**
 

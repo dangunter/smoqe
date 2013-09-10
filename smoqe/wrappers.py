@@ -90,6 +90,17 @@ if have_pymongo:
             return Collection(self, item)
 
     class MongoClient(_MongoClient):
+        """Drop-in replacement for pymongo.MongoClient.
+
+        Three functions are enabled:
+
+        * find
+        * update
+        * remove
+
+        In each case, the `spec` argument will be transparently
+        pre-processed as a smoqe query if it is a string or list.
+        """
         def __getitem__(self, item):
             return Database(self, item)
         def __getattr__(self, item):
