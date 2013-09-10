@@ -3,18 +3,13 @@ Parse and transform a simplified query syntax into
 MongoDB queries.
 """
 __author__ = "Dan Gunter"
-__copyright__ = "Copyright 2012-2013, The Materials Project"
-__version__ = "1.0"
-__maintainer__ = "Dan Gunter"
-__email__ = "dkgunter@lbl.gov"
-__status__ = "Development"
-__date__ = "8/30/13"
 
 ## Imports
 # Standard library
 import copy
 from numbers import Number
 import re
+
 
 class BadExpression(Exception):
     """Raised by `query()` if the input is not understood.
@@ -43,6 +38,7 @@ def to_mongo(qry):
             * boolean: true, false
         - `operator` is a comparison operator:
             * inequalities: >, <, =, <=, >=, !=
+            * regular expression: ~
             * data type: int, float, string, or bool
             * exists: boolean (true/false) whether field exists in record
             * size: for array fields, an inequality for the array size, given as
@@ -82,6 +78,9 @@ def to_mongo(qry):
     {'$or': [{'a': {'$gt': 3}, 'b': 'hello'}, {'c': {'$gt': 1}, 'd': 'goodbye'}]}
     """
     rev = False     # filters, not constraints
+    # special case for empty string/list
+    if qry == "" or qry == []:
+        return {}
     # break input into groups of filters
     unpar = lambda s: s.strip().strip('()')
     if isinstance(qry, str):
@@ -100,7 +99,10 @@ def to_mongo(qry):
     for filter_exprs in groups:
         mq = MongoQuery()
         for e in filter_exprs:
-            e = unpar(e)
+            try:
+                e = unpar(e)
+            except AttributeError:
+                raise BadExpression(e, "expected string, got '{t}'".format(t=type(e)))
             try:
                 constraint = Constraint(*parse_expr(e))
             except ValueError as err:
@@ -118,9 +120,10 @@ def to_mongo(qry):
 # To parse a single constraint expression
 relation_re = re.compile(r'''\s*
     ([a-zA-Z_.0-9]+(?:/[a-zA-Z_.0-9]+)?)\s*     # Identifier
-(<=?|>=?|!?=|exists|                            # Operator (1)
-    type|                                       # Operator (1a)
-    size[><$]?)\s*                              # operator (2)
+    (<=?|>=?|!?=|exists|~|                      # Operator (1)
+      type|                                     # Operator (1a)
+      size[><$]?                                # operator (2)
+    )\s*
     ([-]?\d+(?:\.\d+)?|                         # Value: number
         \'[^\']+\'|                             #   single-quoted string
         \"[^"]+\"|                              #   double-quoted string
@@ -213,6 +216,7 @@ class ConstraintOperator(object):
     SIZE = 'size'
     EXISTS = 'exists'
     TYPE = 'type'
+    REGEX = '~'
 
     # enumeration of size operation modifiers
     SZ_EQ, SZ_GT, SZ_LT, SZ_VAR = 1, 2, 3, 4
@@ -221,7 +225,7 @@ class ConstraintOperator(object):
 
     # logical 'not' of an operator
     OP_NOT = {'>': '<=', '>=': '<', '<': '>=', '<=': '>', '=': '!=', '!=': '=',
-              EXISTS: EXISTS, SIZE: SIZE, TYPE: TYPE}
+              EXISTS: EXISTS, SIZE: SIZE, TYPE: TYPE, REGEX: None}
 
     # set of valid operations
     VALID_OPS = set(OP_NOT.keys())
@@ -257,100 +261,35 @@ class ConstraintOperator(object):
             s = self._op
         return s
 
-    def is_exists(self):
-        """Get whether this is an existence operator.
-        :return: True or False
-        """
-        return self._op == self.EXISTS
-
     @property
     def size_op(self):
         self._check_size()
         return self.SZ_OPS[self._size_code]
 
-    def is_eq(self):
-        """Is this an equality operation.
-
-        :return: Whether it is equal
-        :rtype: bool
-        """
-        return self._op == '='
-
-    def is_neq(self):
-        return self._op == '!='
-
-    def is_equality(self):
-        return self._op in ('=', '!=')
-
-    def is_inequality(self):
-        return self._op in ('>', '>=', '<', '<=')
-
-    def is_size(self):
-        """Get whether this is a size operator.
-        :return: True or False
-        """
-        return self._size_code is not None
-
-    def is_variable(self):
-        """Whether the operator target is a variable
-
-        :return: True or False
-        """
-        return self._size_code == self.SZ_VAR
-
-    def is_size_lt(self):
-        """Is this a less-than size operator.
-
-        :return: True or False
-        :rtype: bool
-        :raise: ValueError, if not a size operator at all
-        """
-        self._check_size()
-        return self._size_code == self.SZ_LT
-
-    def is_size_eq(self):
-        """Is this an equality size operator.
-
-        :return: True or False
-        :rtype: bool
-        :raise: ValueError, if not a size operator at all
-        """
-        self._check_size()
-        return self._size_code == self.SZ_EQ
-
-    def is_size_gt(self):
-        """Is this a greater-than size operator.
-
-        :return: True or False
-        :rtype: bool
-        :raise: ValueError, if not a size operator at all
-        """
-        self._check_size()
-        return self._size_code == self.SZ_GT
-
-    def is_size_var(self):
-        """Is this a variable-equality size operator.
-
-        :return: True or False
-        :rtype: bool
-        :raise: ValueError, if not a size operator at all
-        """
-        self._check_size()
-        return self._size_code == self.SZ_VAR
-
-    def is_type(self):
-        """Whether the operator is 'type'
-
-        :return: True or False
-        """
-        return self._op == self.TYPE
+    is_exists = lambda self: self._op == self.EXISTS
+    is_eq = lambda self: self._op == '='
+    is_neq = lambda self: self._op == '!='
+    is_equality = lambda self: self._op in ('=', '!=')
+    is_inequality = lambda self: self._op in ('>', '>=', '<', '<=')
+    is_size = lambda self: self._size_code is not None
+    is_variable = lambda self: self._size_code == self.SZ_VAR
+    is_size_lt = lambda self: self._check_size() and self._size_code == self.SZ_LT
+    is_size_eq = lambda self: self._check_size() and self._size_code == self.SZ_EQ
+    is_size_gt = lambda self: self._check_size() and self._size_code == self.SZ_GT
+    is_size_var = lambda self: self._check_size() and self._size_code == self.SZ_VAR
+    is_type = lambda self: self._op == self.TYPE
+    is_regex = lambda self: self._op == self.REGEX
 
     def reverse(self):
+        orig = self._op
         self._op = self.OP_NOT[self._op]
+        if self._op is None:
+            raise BadExpression("cannot reverse operator '{}'".format(orig))
 
     def _check_size(self):
         if self._size_code is None:
             raise RuntimeError('Attempted to fetch size code for non-size operator')
+        return True
 
     def _set_size_code(self):
         """Set the code for a size operation.
@@ -407,6 +346,9 @@ class ConstraintOperator(object):
             elif rhs_value is bool:
                 return ltype is bool
             return False
+        if self.is_regex():
+            m = rhs_value.match(lhs_value)
+            return m is not None
 
 
 class Constraint(object):
@@ -444,6 +386,10 @@ class Constraint(object):
                 allowed = ', '.join(list(self.TYPE_MAPPING.keys()))
                 raise ValueError('value for type, {}, not in ({})'.format(value, allowed))
             self._orig_value, value = value, t
+        elif self._op.is_regex():
+            if isinstance(value, Number):
+                raise ValueError('regular expression with numeric value: {}'.format(value))
+            self._orig_value, value = value, re.compile(value)
         self.value = value
 
     def passes(self, value):
@@ -566,6 +512,7 @@ class MongoClause(object):
         ConstraintOperator.EXISTS: '$exists',
         ConstraintOperator.SIZE: '$size',
         ConstraintOperator.TYPE: '$type',
+        ConstraintOperator.REGEX: '$regex',
         '!=': '$ne', '=': None
     }
 
@@ -666,6 +613,8 @@ class MongoClause(object):
                 raise RuntimeError('Could not get JS type for {}'.format(c.value))
             typeop = '!=' if self._rev else '=='
             expr = 'typeof this.{} {} "{}"'.format(c.field.name, typeop, type_name)
+        elif op.is_regex():
+            expr = {c.field.name: {mop: c.value.pattern}}
         else:
             if mop is None:
                 expr = {c.field.name: c.value}
@@ -809,12 +758,12 @@ def main():
         if not expr:
             break
         try:
-            q = query(expr)
+            q = to_mongo(expr)
         except BadExpression as e:
             print(("Error! Cannot parse '{}'".format(e.expr)))
             continue
         print(("Result: {}".format(q)))
-    _exit(0)
+    _exit()
 
 if __name__ == '__main__':
     main()
