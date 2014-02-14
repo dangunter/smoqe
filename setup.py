@@ -3,7 +3,7 @@ ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(
     name="smoqe",
-    version="0.1",
+    version="0.1.1",
     packages=find_packages(),
 # TBD:
 #    entry_point={
@@ -22,7 +22,7 @@ setup(
     # metadata for upload to PyPI
     author="Dan Gunter",
     author_email="dkgunter@lbl.gov",
-    description="Simple MongoDB Query (SMoQ)",
+    description="Simple MongoDB Query Engine (SMoQE)",
     license="LGPL",
     keywords="MongoDB",
     url="http://example.com/HelloWorld/",   # project home page, if any

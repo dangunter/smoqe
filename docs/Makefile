@@ -41,6 +41,10 @@ help:
 clean:
 	-rm -rf $(BUILDDIR)/*
 
+zipped:
+	@cd _build/html; zip  -r html . -x \*.buildinfo \*.doctrees\* && mv html.zip ../..
+	@printf "output: html.zip\n"
+
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
