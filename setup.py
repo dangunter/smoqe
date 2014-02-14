@@ -3,8 +3,9 @@ ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(
     name="smoqe",
-    version="0.1.1",
+    version="0.1.2",
     packages=find_packages(),
+    py_modules = ['ez_setup'],
 # TBD:
 #    entry_point={
 #        'console_scripts': [
